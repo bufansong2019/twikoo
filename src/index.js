@@ -1181,7 +1181,7 @@ async function r2_upload(event, bucket, cdnUrl) {
     const now = new Date()
     const year = now.getFullYear()
     const month = now.getMonth() + 1
-    const path = month < 10 ? `${year}/0${month}/` : `${year}/${month}/`
+    const path = month < 10 ? `twikoo/${year}/0${month}/` : `twikoo/${year}/${month}/`
     let filename = md5(photo)
     const blob = dataURIToBlob(photo)
     const mime = blob.type.split('/')
