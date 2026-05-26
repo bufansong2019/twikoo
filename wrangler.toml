@@ -13,6 +13,11 @@ database_id = "43340671-9fb5-47f9-99d6-056d942d9cc5"
 binding = "R2"
 bucket_name = "public-bucket"
 
+[[routes]]
+pattern = "twikoo.f1sh.org"
+zone_name = "f1sh.org"
+custom_domain = true
+
 [vars]
 R2_PUBLIC_URL = "https://public.f1sh.org"
 

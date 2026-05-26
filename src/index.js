@@ -412,9 +412,15 @@ export default {
           break
         case 'GET_CONFIG':
           res = await getConfig({ config, VERSION, isAdmin: isAdmin() })
+          if (env.R2 && env.R2_PUBLIC_URL) {
+            res.config.IMAGE_CDN = 'cloudflare-r2'
+          }
           break
         case 'GET_CONFIG_FOR_ADMIN':
           res = await getConfigForAdmin({ config, isAdmin: isAdmin() })
+          if (res.config && env.R2 && env.R2_PUBLIC_URL) {
+            res.config.IMAGE_CDN = res.config.IMAGE_CDN || 'cloudflare-r2'
+          }
           break
         case 'SET_CONFIG':
           res = await setConfig(event)
@@ -516,7 +522,8 @@ async function setPassword (event) {
   if (config.ADMIN_PASS && !isAdminUser) {
     return { code: RES_CODE.PASS_EXIST, message: '请先登录再修改密码' }
   }
-  const ADMIN_PASS = md5(event.password)
+  // 兼容新旧客户端：新版预哈希，旧版传明文。MD5 格式的直存，否则哈希后存
+  const ADMIN_PASS = /^[a-f0-9]{32}$/i.test(event.password) ? event.password : md5(event.password)
   await writeConfig({ ADMIN_PASS })
   return {
     code: RES_CODE.SUCCESS
@@ -531,7 +538,8 @@ async function login (password) {
   if (!config.ADMIN_PASS) {
     return { code: RES_CODE.PASS_NOT_EXIST, message: '未配置管理密码' }
   }
-  if (config.ADMIN_PASS !== md5(password)) {
+  // 兼容新旧客户端：新版预哈希，旧版传明文，两种都尝试
+  if (config.ADMIN_PASS !== md5(password) && config.ADMIN_PASS !== password) {
     return { code: RES_CODE.PASS_NOT_MATCH, message: '密码错误' }
   }
   return {
@@ -1147,7 +1155,8 @@ function getUid () {
 // 判断用户是否管理员
 function isAdmin () {
   const uid = getUid()
-  return config.ADMIN_PASS === md5(uid)
+  // 兼容新旧客户端：旧版传明文密码，新版传预哈希密码
+  return config.ADMIN_PASS === md5(uid) || config.ADMIN_PASS === uid
 }
 
 function getIp (request) {
@@ -1207,7 +1216,8 @@ async function r2_upload(event, bucket, cdnUrl) {
 function dataURIToBlob(dataURI) {
   // 分离 MIME 类型和 base64 数据
   const [header, base64] = dataURI.split(',');
-  const mime = header.match(/:(.*?);/)[1];
+  const mimeMatch = header.match(/:(.*?)(?:;|$)/);
+  const mime = mimeMatch ? mimeMatch[1] : 'image/png';
 
   // 解码 base64 数据
   const binaryString = atob(base64);
